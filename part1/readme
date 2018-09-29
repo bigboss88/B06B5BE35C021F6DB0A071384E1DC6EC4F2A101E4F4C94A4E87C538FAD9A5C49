@@ -1,0 +1,3 @@
+This is the solutions for #1 it does multi-cpu but not priority 
+
+Run make, it will generate a executable named run, run takes in an int (# cpu) as a argument 
