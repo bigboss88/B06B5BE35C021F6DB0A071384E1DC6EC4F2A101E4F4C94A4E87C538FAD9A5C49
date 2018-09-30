@@ -161,6 +161,7 @@ int main(int argc, char  *argv[]){
 	int i =0;
 	for(i;i<4;i++){
 		scanf("%s",dump);
+		//printf("%s\n",dump );
 	}
 	char user[50];
 	char job;
@@ -176,25 +177,28 @@ int main(int argc, char  *argv[]){
 			*job_list = init(user,job,arrive,dur);
 			*user_list = init_USER(user,arrive);
 			min=arrive;
+			//printf("%s %c %d %d \n",user,job,arrive,dur );
 		}
 		else{
 			test = init(user,job,arrive,dur);
 			 insert(job_list,test);
 			 insert_USER(user_list,user,arrive);
+			 //printf("%s %c %d %d \n",user,job,arrive,dur );
 			 if(arrive < min){
 			 	min = arrive;
 			 }
 		}
 		i++;
 	}
+	//printf("%d\n",num_cpu );
 	printf("time");
 	for(i = 0;i<num_cpu;i++){
-		cpu_jobs[i]->job='*';
+		cpu_jobs[i]=NULL;
 		printf("	CPU%d",i+1);
 		
 	}
 	printf("\n");
-	time = min-1;
+	time = min;
 	while(*job_list != NULL){ // while there are still jobs
 		//if(time == 7 ){print_list(job_list);}
 		struct node *cur = (struct node *) malloc(sizeof(struct node));
@@ -218,7 +222,6 @@ int main(int argc, char  *argv[]){
 				pop(job_list,tmp->job);
 			}
 			if(cur == NULL){break;}
-
 			cur = cur->next;
 		}
 		printf("%d", time);
