@@ -48,38 +48,37 @@ int find_CPU(struct cpu cpus[], int num_cpu,struct node *job){
 	return 0; // else job has to wait
 }
 
-int find_CPU2( pthread_t cpus[], struct node cpu_jobs[],int num_cpu,struct node *job){
+int find_CPU2(struct node* cpu_jobs[],int num_cpu,struct node *job){
+
+
 	int i =0;
-	//printf(": %d\n", num_cpu);
+	//Firt look to see if the job is being worked on already
 	for(i;i<num_cpu;i++){
-		//printf("Checking same \n");
-		if(cpu_jobs[i].job == job->job){return 0;} // Already being worked on
+		if(cpu_jobs[i] != NULL && cpu_jobs[i]->job == job->job){return 0;} // if it's already being worked on then ignore it
 	}
 	i=0;
-	//printf("Checking Empty\n");
+	//then look for which cpu it should use, first free one, or take over a longer job
 	for(i;i<num_cpu;i++){
-		if(cpu_jobs[i].job == '*'){
-			printf("Job %c\n",cpu_jobs[i].job);
-			pthread_create(&cpus[i],NULL,&work_job,(void *) job);
-			cpu_jobs[i] = *job;
-			printf("Created pthread in empty %d\n",i);
+		//printf("%c\n",cpus[i].cur_job);
+		if(cpu_jobs[i] == NULL){
+			// /printf("Setting in empty cpu\n");
+			cpu_jobs[i] = job;
+			//printf("Job in cpu %d: %c\n",i,cpus[i].cur_job );
 			return 1;
 		}
 	}
 
-	//if they are all full
-	printf("Checking full\n");
+	// if they are all full
+
 	i=0;
 	for(i;i<num_cpu;i++){
-		if(cpu_jobs[i].dur > job->dur){
-			pthread_create(&cpus[i],NULL,&work_job,(void *) job);
-			cpu_jobs[i] = *job;
-			printf("Created pthread in full %d\n",i);
+		if(cpu_jobs[i] != NULL && cpu_jobs[i]->dur > job->dur){ // you'll want to replace this job
+			cpu_jobs[i] = job;
+		//	printf("Job in cpu %d: %c\n",i,cpus[i].cur_job );
 			return 1;
 		}
 	}
-
-	return 0;
+	return 0; // else job has to wait
 }
 //Does work on all cpus that has a job
 int work_CPUS(struct cpu cpus[],int num_cpu){
@@ -115,19 +114,39 @@ void join_Threads(pthread_t threads[],int num_cpu){
 	}
 }
 
-void print_Jobs(struct node job[], int num){
+void print_Jobs(struct node* job[], int num){
 	int i=0;
 	for(i;i<num;i++){
-		printf("%c 	",job[i].job);
+		printf("%c 	",job[i]->job);
 	}
 	printf("\n");
 }
 
+void make_Threads(pthread_t threads[], struct node* cpu_jobs[],int num_cpu){
+	int i =0;
+	for(i;i<num_cpu;i++){
+		if(cpu_jobs[i]!=NULL){
+			pthread_create(&threads[i],NULL,&work_job,(void *)cpu_jobs[i]);
+		}
+	}
+}
 
-void clear_job(struct node jobs[],int num_cpu){
+int findNum_Jobs(struct node* cpu_jobs[],int num_cpu){
+	int out = 0;
 	int i=0;
 	for(i;i<num_cpu;i++){
-		jobs[i].job='*';
+		if(cpu_jobs[i] != NULL){
+			out++;
+		}
+	}
+	return out;
+}
+
+
+void clear_job(struct node* jobs[],int num_cpu){
+	int i=0;
+	for(i;i<num_cpu;i++){
+		jobs[i]=NULL;
 	}
 }
 int main(int argc, char  *argv[]){
@@ -136,7 +155,7 @@ int main(int argc, char  *argv[]){
 	if(num_cpu < 1){printf("Can't have less than 1 cpu\n");return 0;}
 	//printf("%d \n",num_cpu );
 	pthread_t cpus[num_cpu];
-	struct node cpu_jobs[num_cpu];
+	struct node* cpu_jobs[num_cpu];
 	char dump[100];
 	int time = 0;
 	int i =0;
@@ -170,24 +189,26 @@ int main(int argc, char  *argv[]){
 	}
 	printf("time");
 	for(i = 0;i<num_cpu;i++){
-		cpu_jobs[i].job='*';
+		cpu_jobs[i]->job='*';
 		printf("	CPU%d",i+1);
 		
 	}
 	printf("\n");
-	time = min;
+	time = min-1;
 	while(*job_list != NULL){ // while there are still jobs
 		//if(time == 7 ){print_list(job_list);}
 		struct node *cur = (struct node *) malloc(sizeof(struct node));
 		cur = *job_list;
-
+		int num_jobs =0;
 		while (cur != NULL){ // go through list;
 			
 			if(cur->arr <= time){ // if it has arrived
 				//has arrived and is smallest dur
 				//printf("dur of usr %d  arr of user %d\n",cur->dur,cur->arr );
-				print_Jobs(cpu_jobs,num_cpu);
-				find_CPU2(cpus,cpu_jobs, num_cpu,cur);
+				//print_Jobs(cpu_jobs,num_cpu);
+				find_CPU2(cpu_jobs, num_cpu,cur);
+				num_jobs = findNum_Jobs(cpu_jobs,num_cpu);
+				//printf("Num Jobs %d\n",num_jobs );
 			}
 			if(cur->dur <= 1){ // if this job is done remove it for some reason it will work on 0 so I set to 1
 				struct node *tmp = (struct node *) malloc(sizeof(struct node));
@@ -203,7 +224,10 @@ int main(int argc, char  *argv[]){
 		printf("%d", time);
 		//print_CPUS(cpus,num_cpu,time);
 		//work_CPUS(cpus,num_cpu);
-		join_Threads(cpus,num_cpu);
+		//print_Jobs(cpu_jobs,num_cpu);
+		//print_list(job_list);
+		make_Threads(cpus,cpu_jobs,num_jobs);
+		join_Threads(cpus,num_jobs);
 		clear_job(cpu_jobs,num_cpu);
 		printf("\n");
 		time++;
